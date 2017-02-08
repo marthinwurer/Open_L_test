@@ -36,6 +36,15 @@ const int SCREEN_WIDTH = 1024; // the width of the screen in pixels
 const int SCREEN_HEIGHT = 1024; // the height of the screen in pixels
 
 #define DO_CL
+
+
+// this struct holds the data needed to render a vertex
+typedef struct vertex_data{
+	cl_float4 coords;
+	cl_float4 normal;
+} vertex_data;
+
+
 static inline void create_Y_rot_mat4x4(mat4x4 M, float angle);
 
 
@@ -175,6 +184,33 @@ void printtime(){
     old = current;
 }
 
+void cl_average(cl_command_queue cl_queue, cl_kernel test_kern,
+		cl_int dimension, cl_int buff_size, cl_mem * buf_1, cl_mem * buf_2   ){
+	CALL_CL_GUARDED(clFinish, (cl_queue));
+	//        gettimeofday(&start, NULL);
+
+	// set up parameters to the call
+	size_t ldim[] = { 32 };
+	size_t gdim[] = { buff_size };
+
+
+	// set the arguments
+	CALL_CL_GUARDED(clSetKernelArg, (test_kern, 0, sizeof(buf_1), buf_1));
+	CALL_CL_GUARDED(clSetKernelArg, (test_kern, 1, sizeof(buf_2), buf_2));
+	CALL_CL_GUARDED(clSetKernelArg, (test_kern, 2, sizeof(cl_int), &dimension));
+	CALL_CL_GUARDED(clSetKernelArg, (test_kern, 3, sizeof(cl_int), &buff_size));
+
+	// enqueue the kernel (plus magic constant arrays copied from the example
+	CALL_CL_GUARDED(clEnqueueNDRangeKernel,
+			(cl_queue, test_kern,
+					/*dimensions*/ 1, NULL, gdim, ldim,
+					0, NULL, NULL));
+
+	// wait until the kernel is finished
+	CALL_CL_GUARDED(clFinish, (cl_queue));
+
+}
+
 
 int main( int argc, char ** argv){
 
@@ -309,19 +345,10 @@ int main( int argc, char ** argv){
 	// wait until the device is free
 	CALL_CL_GUARDED(clFinish, (cl_queue));
 
-	// set the arguments
-	CALL_CL_GUARDED(clSetKernelArg, (test_kern, 0, sizeof(buf_a), &buf_a));
-	CALL_CL_GUARDED(clSetKernelArg, (test_kern, 1, sizeof(buf_b), &buf_b));
-	CALL_CL_GUARDED(clSetKernelArg, (test_kern, 2, sizeof(cl_int), &dimension));
-	CALL_CL_GUARDED(clSetKernelArg, (test_kern, 3, sizeof(cl_int), &buff_size));
-
-	// enqueue the kernel (plus magic constant arrays copied from the example
 	size_t ldim[] = { 32 };
-	size_t gdim[] = { ((buff_size + ldim[0] - 1)/ldim[0])*ldim[0] };
-	CALL_CL_GUARDED(clEnqueueNDRangeKernel,
-			(cl_queue, test_kern,
-					/*dimensions*/ 1, NULL, gdim, ldim,
-					0, NULL, NULL));
+	size_t gdim[] = { buff_size };
+
+	cl_average(cl_queue, test_kern, dimension, buff_size, &buf_a, &buf_b);
 #if 0
 extern CL_API_ENTRY cl_int CL_API_CALL
 clEnqueueNDRangeKernel(cl_command_queue /* command_queue */,
@@ -478,13 +505,13 @@ clEnqueueNDRangeKernel(cl_command_queue /* command_queue */,
     GLuint num_vertexes = dimension * dimension;
 
     // make the array for indexes (VBO)
-    cl_float4 * vertexes = malloc(num_vertexes * sizeof( cl_float4));
+    vertex_data * vertexes = malloc(num_vertexes * sizeof( vertex_data));
     for( int ii = 0; ii < dimension; ii++){
     	for(int jj = 0; jj < dimension; jj++){
     		int index = ii * dimension + jj;
-    		vertexes[index].x = jj;
-    		vertexes[index].z = ii;
-        	vertexes[index].w = 0.0;
+    		vertexes[index].coords.x = jj;
+    		vertexes[index].coords.z = ii;
+        	vertexes[index].coords.w = 0.0;
     	}
     }
     float * g_v = (float *)vertexes;
@@ -539,12 +566,16 @@ clEnqueueNDRangeKernel(cl_command_queue /* command_queue */,
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
 
     // write the vertices to the buffer
-    glBufferData(GL_ARRAY_BUFFER, num_vertexes * sizeof(cl_float4), vertexes, GL_STREAM_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, num_vertexes * sizeof(vertex_data), vertexes, GL_STREAM_DRAW);
 
     // set up the schema (pointers) for the data for the vertexes. not really, one VAO can point to multiple VBOs
     //           parameter  #values  type  Normalize?  size in bytes  offset in the buffer
-    glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, sizeof(cl_float4), (GLvoid*)0);
+    glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, sizeof(vertex_data), (GLvoid*)0);
     glEnableVertexAttribArray(0); // enable that pointer in the VAO
+
+    // normals
+    glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(vertex_data), (GLvoid*)sizeof(cl_float4));
+    glEnableVertexAttribArray(1); // enable that pointer in the VAO
 
     // make an Element Buffer Object
     GLuint EBO;
@@ -617,8 +648,8 @@ clEnqueueNDRangeKernel(cl_command_queue /* command_queue */,
 
         // transfer the heightmap from the openCL buffer to the openGL one
         for( size_t ii = 0; ii < num_vertexes; ii++){
-        	vertexes[ii].y = b->values[ii];
-        	vertexes[ii].w = 0.0;
+        	vertexes[ii].coords.y = b->values[ii];
+        	vertexes[ii].coords.w = 0.0;
         }
 
 //        for( int ii = 0; ii < num_corners; ii++){
@@ -632,7 +663,7 @@ clEnqueueNDRangeKernel(cl_command_queue /* command_queue */,
         glBindBuffer(GL_ARRAY_BUFFER, VBO);
 
         // write the vertices to the buffer
-        glBufferData(GL_ARRAY_BUFFER, num_vertexes * sizeof(cl_float4), vertexes, GL_STREAM_DRAW);
+        glBufferData(GL_ARRAY_BUFFER, num_vertexes * sizeof(vertex_data), vertexes, GL_STREAM_DRAW);
 
 		// unbind the VBO
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -685,6 +716,7 @@ clEnqueueNDRangeKernel(cl_command_queue /* command_queue */,
         // bind the VAO
         glBindVertexArray(VAO);
         // render with an EBO
+//        glDrawElements(GL_LINE_LOOP, num_corners, GL_UNSIGNED_INT, 0);
         glDrawElements(GL_TRIANGLES, num_corners, GL_UNSIGNED_INT, 0);
 
         // unbind the VAO
@@ -699,6 +731,7 @@ clEnqueueNDRangeKernel(cl_command_queue /* command_queue */,
         glUniformMatrix4fv(viewLocationWater, 1, GL_FALSE, (GLfloat *) view_matrix);
         glUniformMatrix4fv(projectionLocationWater, 1, GL_FALSE, (GLfloat *) proj_matrix);
         glDrawElements(GL_TRIANGLES, num_corners, GL_UNSIGNED_INT, 0);
+//        glDrawElements(GL_LINE_LOOP, num_corners, GL_UNSIGNED_INT, 0);
 
         glBindVertexArray(0);
 
@@ -711,24 +744,8 @@ clEnqueueNDRangeKernel(cl_command_queue /* command_queue */,
 
     	// recompute the next step
     	// wait until the device is free
-    	CALL_CL_GUARDED(clFinish, (cl_queue));
-//        gettimeofday(&start, NULL);
+		cl_average(cl_queue, test_kern, dimension, buff_size, buf_1, buf_2);
 
-
-    	// set the arguments
-    	CALL_CL_GUARDED(clSetKernelArg, (test_kern, 0, sizeof(buf_a), buf_1));
-    	CALL_CL_GUARDED(clSetKernelArg, (test_kern, 1, sizeof(buf_b), buf_2));
-    	CALL_CL_GUARDED(clSetKernelArg, (test_kern, 2, sizeof(cl_int), &dimension));
-    	CALL_CL_GUARDED(clSetKernelArg, (test_kern, 3, sizeof(cl_int), &buff_size));
-
-    	// enqueue the kernel (plus magic constant arrays copied from the example
-    	CALL_CL_GUARDED(clEnqueueNDRangeKernel,
-    			(cl_queue, test_kern,
-    					/*dimensions*/ 1, NULL, gdim, ldim,
-    					0, NULL, NULL));
-//
-    	// wait until the kernel is finished
-    	CALL_CL_GUARDED(clFinish, (cl_queue));
 
 //    	// get the results back
     	CALL_CL_GUARDED(clEnqueueReadBuffer, (

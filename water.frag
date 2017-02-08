@@ -1,5 +1,6 @@
 #version 330 core
 in vec3 pos;
+in vec4 norm;
 out vec4 color;
 
 

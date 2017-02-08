@@ -31,3 +31,14 @@
 # Debug files
 *.dSYM/
 *.su
+
+# Project files
+.cproject
+.project
+*.settings
+
+# executables
+cl-demo
+mytest
+print-devices
+
