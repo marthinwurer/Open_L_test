@@ -8,6 +8,7 @@ __kernel void calc_normals(
 	int dimension,
 	int max,
 	float dx,
+	float dy,
 	float dz)
 {
 	int gid = get_global_id(0);
@@ -22,12 +23,12 @@ __kernel void calc_normals(
 		
 		// east index
 		int eastx = (x + 1) % dimension; 
-		int eastindex = index( y, eastx, dimension);
+		int eastindex = index( eastx, y, dimension);
 		
 		// load the values
-		float south = a[southindex];
-		float east =  a[eastindex];
-		float current = a[gid];
+		float south = a[southindex] * dy;
+		float east =  a[eastindex] * dy;
+		float current = a[gid] * dy;
 		
 		/*
 		A surface normal for a triangle can be calculated by taking the vector cross
@@ -44,15 +45,15 @@ __kernel void calc_normals(
 
 		Nz = UxVy - UyVx
 */
-		float4 current_point = (float4)(0.0f, current, 0.0f, 0.0f);
-		float4 south_point = (float4)(0.0f, south, dz, 0.0f);
-		float4 east_point = (float4)(dx, east, 0.0f, 0.0f);
-		float4 z_vector = south_point - current_point;
-		float4 x_vector = east_point - current_point;
+		float3 current_point = (float3)(0.0f, current, 0.0f);
+		float3 south_point = (float3)(0.0f, south, dz);
+		float3 east_point = (float3)(dx, east, 0.0f);
+		float3 z_vector = south_point - current_point;
+		float3 x_vector = east_point - current_point;
 		
 		// store the cross product of those vectors
-		float4 output = cross(z_vector, x_vector);
-		out[gid] = normalize(output);
+		float3 output = cross(z_vector, x_vector);
+		out[gid] = (float4)(normalize(output), 1.0f);
 	}
 }
 		

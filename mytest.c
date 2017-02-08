@@ -5,6 +5,7 @@
  *      Author: benjamin
  */
 
+#define CL_USE_DEPRECATED_OPENCL_1_2_APIS
 #ifdef __APPLE__
 #include <OpenCL/opencl.h>
 #else
@@ -37,7 +38,7 @@ const int SCREEN_HEIGHT = 1024; // the height of the screen in pixels
 
 #define DO_CL
 #ifdef DO_CL
-//#define DO_AVERAGE
+#define DO_AVERAGE
 #endif
 
 
@@ -48,14 +49,43 @@ typedef struct vertex_data{
 } vertex_data;
 
 
+static inline void create_X_rot_mat4x4(mat4x4 M, float angle);
 static inline void create_Y_rot_mat4x4(mat4x4 M, float angle);
+static inline void create_Z_rot_mat4x4(mat4x4 M, float angle);
 
 
+/**
+ * rotate the position in toRotate around the given axis by angle radians
+ */
+void rotate_vec4_x(vec4 toRotate, float angle){
+	vec4 temp;
+	// rotate it around the origin
+	mat4x4 rotation_matrix;
+	create_X_rot_mat4x4(rotation_matrix, -angle);
+	mat4x4_mul_vec4(temp, rotation_matrix, toRotate);
+
+	toRotate[0] = temp[0];
+	toRotate[1] = temp[1];
+	toRotate[2] = temp[2];
+	toRotate[3] = temp[3];
+}
 void rotate_vec4_y(vec4 toRotate, float angle){
 	vec4 temp;
 	// rotate it around the origin
 	mat4x4 rotation_matrix;
 	create_Y_rot_mat4x4(rotation_matrix, -angle);
+	mat4x4_mul_vec4(temp, rotation_matrix, toRotate);
+
+	toRotate[0] = temp[0];
+	toRotate[1] = temp[1];
+	toRotate[2] = temp[2];
+	toRotate[3] = temp[3];
+}
+void rotate_vec4_z(vec4 toRotate, float angle){
+	vec4 temp;
+	// rotate it around the origin
+	mat4x4 rotation_matrix;
+	create_Z_rot_mat4x4(rotation_matrix, -angle);
 	mat4x4_mul_vec4(temp, rotation_matrix, toRotate);
 
 	toRotate[0] = temp[0];
@@ -70,6 +100,7 @@ vec3 camera_position = {0.0f, 100.0f, 0.0f};
 
 mat4x4 view_matrix; // moves from world space to camera space
 float camera_rotation = 0.0f; // in rads
+float camera_pitch = 0.0f;
 
 
 
@@ -107,10 +138,15 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 		break;
 	case GLFW_KEY_O:
 		camera_rotation += 0.1;
-
 		break;
 	case GLFW_KEY_P:
 		camera_rotation -= 0.1;
+		break;
+	case GLFW_KEY_I:
+		camera_pitch += 0.1;
+		break;
+	case GLFW_KEY_K:
+		camera_pitch -= 0.1;
 		break;
 	}
 
@@ -153,6 +189,21 @@ GLuint compile_shader(const char * filename, GLuint shader_type){
 	return shader;
 }
 
+/**
+ * create a rotation matrix around the origin around the given axis for angle radians.
+ */
+static inline void create_X_rot_mat4x4(mat4x4 M, float angle)
+{
+	float s = sinf(angle);
+	float c = cosf(angle);
+	mat4x4 R = {
+		{1.f, 0.f, 0.f, 0.f},
+		{0.f,   c,   s, 0.f},
+		{0.f,  -s,   c, 0.f},
+		{0.f, 0.f, 0.f, 1.f}
+	};
+	mat4x4_dup( M, R);
+}
 static inline void create_Y_rot_mat4x4(mat4x4 M, float angle)
 {
 	float s = sinf(angle);
@@ -161,6 +212,18 @@ static inline void create_Y_rot_mat4x4(mat4x4 M, float angle)
 		{   c, 0.f,   s, 0.f},
 		{ 0.f, 1.f, 0.f, 0.f},
 		{  -s, 0.f,   c, 0.f},
+		{ 0.f, 0.f, 0.f, 1.f}
+	};
+	mat4x4_dup( M, R);
+}
+static inline void create_Z_rot_mat4x4(mat4x4 M, float angle)
+{
+	float s = sinf(angle);
+	float c = cosf(angle);
+	mat4x4 R = {
+		{   c,   s, 0.f, 0.f},
+		{  -s,   c, 0.f, 0.f},
+		{ 0.f, 0.f, 1.f, 0.f},
 		{ 0.f, 0.f, 0.f, 1.f}
 	};
 	mat4x4_dup( M, R);
@@ -227,7 +290,7 @@ clEnqueueNDRangeKernel(cl_command_queue /* command_queue */,
 }
 
 void calc_normals(cl_command_queue cl_queue, cl_kernel kern,
-		cl_int dimension, cl_int buff_size, cl_mem * vertexes, cl_mem * normals, cl_float dx, cl_float dy  ){
+		cl_int dimension, cl_int buff_size, cl_mem * vertexes, cl_mem * normals, cl_float dx, cl_float dy, cl_float dz  ){
 	CALL_CL_GUARDED(clFinish, (cl_queue));
 
 	// set up parameters to the call
@@ -242,6 +305,7 @@ void calc_normals(cl_command_queue cl_queue, cl_kernel kern,
 	CALL_CL_GUARDED(clSetKernelArg, (kern, 3, sizeof(cl_int), &buff_size));
 	CALL_CL_GUARDED(clSetKernelArg, (kern, 4, sizeof(cl_float), &dx));
 	CALL_CL_GUARDED(clSetKernelArg, (kern, 5, sizeof(cl_float), &dy));
+	CALL_CL_GUARDED(clSetKernelArg, (kern, 6, sizeof(cl_float), &dz));
 
 	// enqueue the kernel (plus magic constant arrays copied from the example
 	CALL_CL_GUARDED(clEnqueueNDRangeKernel,
@@ -267,8 +331,8 @@ int main( int argc, char ** argv){
 
     time(&currtime);
 
-    currtime = 5554;
 
+    currtime = 5554;
     seed(&rand, (int) currtime, currtime * 3); // seed the RNG
 
 	// do local memory allocation
@@ -284,6 +348,8 @@ int main( int argc, char ** argv){
 
 	// malloc space for the normals
 	cl_float4 * normals = malloc(buff_size * sizeof(cl_float4));
+
+	float height_scale = (float) dimension / (float) 4;
 
 
 #ifdef DO_CL
@@ -418,7 +484,7 @@ int main( int argc, char ** argv){
 
 
     // calculate the normals
-    calc_normals(cl_queue, normal_kern, dimension, buff_size, &buf_a, &buf_normals, 1.0, 1.0);
+    calc_normals(cl_queue, normal_kern, dimension, buff_size, &buf_a, &buf_normals, 1.0, height_scale, 1.0);
 
     // read them back
 	CALL_CL_GUARDED(clEnqueueReadBuffer, (
@@ -517,6 +583,7 @@ int main( int argc, char ** argv){
     GLint rotationLocation = glGetUniformLocation(shaderProgram, "model2world");
     GLint viewLocation = glGetUniformLocation(shaderProgram, "view");
     GLint projectionLocation = glGetUniformLocation(shaderProgram, "projection");
+    GLint heightscale = glGetUniformLocation(shaderProgram, "heightscale");
 
 
     // delete the shaders and strings, as they are not needed anymore
@@ -547,6 +614,7 @@ int main( int argc, char ** argv){
     GLint rotationLocationWater = glGetUniformLocation(shaderProgram, "model2world");
     GLint viewLocationWater = glGetUniformLocation(shaderProgram, "view");
     GLint projectionLocationWater = glGetUniformLocation(shaderProgram, "projection");
+    GLint heightscaleWater = glGetUniformLocation(shaderProgram, "heightscale");
     // delete the shaders and strings, as they are not needed anymore
     glDeleteShader(vertexShader);
     glDeleteShader(fragmentShader);
@@ -699,8 +767,15 @@ int main( int argc, char ** argv){
         for( size_t ii = 0; ii < num_vertexes; ii++){
         	vertexes[ii].coords.y = b->values[ii];
         	vertexes[ii].coords.w = 0.0;
-        	vertexes[ii].normal = normals[ii];
+        	vertexes[ii].normal.x = normals[ii].x;
+        	vertexes[ii].normal.y = normals[ii].y;
+        	vertexes[ii].normal.z = normals[ii].z;
+        	vertexes[ii].normal.w = normals[ii].w;
         }
+
+        cl_float4 cur_norm = vertexes[buff_size - 1].normal;
+
+        printf("norm1{%f, %f, %f, %f}\n", cur_norm.x, cur_norm.y, cur_norm.z, cur_norm.w);
 
 //        for( int ii = 0; ii < num_corners; ii++){
 //        	if(vertexes[ebo[ii]].y == 0.f){
@@ -713,6 +788,7 @@ int main( int argc, char ** argv){
         glBindBuffer(GL_ARRAY_BUFFER, VBO);
 
         // write the vertices to the buffer
+        glBufferData(GL_ARRAY_BUFFER, 0, NULL, GL_STREAM_DRAW); // invalidate the old buffer
         glBufferData(GL_ARRAY_BUFFER, num_vertexes * sizeof(vertex_data), vertexes, GL_STREAM_DRAW);
 
 		// unbind the VBO
@@ -743,13 +819,12 @@ int main( int argc, char ** argv){
 
         // make the eye point
         vec4 eye = {-1.0f, 0.0f, 0.0f, 0.0f};
-        vec4 temp;
-        // rotate it around the origin
-        mat4x4 eye_roatation;
-        create_Y_rot_mat4x4(eye_roatation, -camera_rotation);
-        mat4x4_mul_vec4(temp, eye_roatation, eye);
+        rotate_vec4_z(eye, camera_pitch);
+//        printf("%f eyex{%f, %f, %f} ",camera_pitch, eye[0], eye[1], eye[2]);
+        rotate_vec4_y(eye, camera_rotation);
+//        printf("eyey{%f, %f, %f}\n", eye[0], eye[1], eye[2]);
         // add it to the camera position
-        vec3_add(eye, temp, camera_position);
+        vec3_add(eye, eye, camera_position);
 //        printf("eye{%f, %f, %f}\n", eye[0], eye[1], eye[2]);
         // look from it to the camera position
         mat4x4_look_at(view_matrix, eye, camera_position, up);
@@ -761,6 +836,7 @@ int main( int argc, char ** argv){
 //        glUniformMatrix4fv(projectionLocation, 1, GL_FALSE, (GLfloat *) view_matrix);
         glUniformMatrix4fv(projectionLocation, 1, GL_FALSE, (GLfloat *) proj_matrix);
 
+        glUniform1f(heightscale, height_scale);
 
 
         // bind the VAO
@@ -780,6 +856,7 @@ int main( int argc, char ** argv){
         glUniformMatrix4fv(rotationLocationWater, 1, GL_FALSE, (GLfloat *) model2world);
         glUniformMatrix4fv(viewLocationWater, 1, GL_FALSE, (GLfloat *) view_matrix);
         glUniformMatrix4fv(projectionLocationWater, 1, GL_FALSE, (GLfloat *) proj_matrix);
+        glUniform1f(heightscaleWater, height_scale);
         glDrawElements(GL_TRIANGLES, num_corners, GL_UNSIGNED_INT, 0);
 //        glDrawElements(GL_LINE_LOOP, num_corners, GL_UNSIGNED_INT, 0);
 
@@ -794,22 +871,33 @@ int main( int argc, char ** argv){
     	// recompute the next step
     	// wait until the device is free
 #ifdef DO_AVERAGE
-		cl_average(cl_queue, test_kern, dimension, buff_size, buf_1, buf_2);
-
-
-//    	// get the results back
-    	CALL_CL_GUARDED(clEnqueueReadBuffer, (
-    	        cl_queue, *buf_2, /*blocking*/ CL_TRUE, /*offset*/ 0,
-    			buff_size * sizeof(float), b->values,
-    	        0, NULL, NULL));
-    	CALL_CL_GUARDED(clFinish, (cl_queue));
+//		cl_average(cl_queue, test_kern, dimension, buff_size, buf_1, buf_2);
+//
+//
+////    	// get the results back
+//    	CALL_CL_GUARDED(clEnqueueReadBuffer, (
+//    	        cl_queue, *buf_2, /*blocking*/ CL_TRUE, /*offset*/ 0,
+//    			buff_size * sizeof(float), b->values,
+//    	        0, NULL, NULL));
+//    	CALL_CL_GUARDED(clFinish, (cl_queue));
 //
 //        gettimeofday(&end, NULL);
 
+		// calculate the new normals
+		calc_normals(cl_queue, normal_kern, dimension, buff_size, buf_1, &buf_normals, 1.0, height_scale, 1.0);
+    	CALL_CL_GUARDED(clFinish, (cl_queue));
+
+		// read them back
+		CALL_CL_GUARDED(clEnqueueReadBuffer, (
+				cl_queue, buf_normals, /*blocking*/ CL_TRUE, /*offset*/ 0,
+				buff_size * sizeof(cl_float4), normals,
+				0, NULL, NULL));
+    	CALL_CL_GUARDED(clFinish, (cl_queue));
+
     	// swap the openCL buffers
-    	swap_buff = buf_1;
-    	buf_1 = buf_2;
-    	buf_2 = swap_buff;
+//    	swap_buff = buf_1;
+//    	buf_1 = buf_2;
+//    	buf_2 = swap_buff;
 
 #endif
 
@@ -828,28 +916,6 @@ int main( int argc, char ** argv){
 
 
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

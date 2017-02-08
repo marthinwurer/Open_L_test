@@ -9,6 +9,7 @@ out vec4 norm;
 uniform mat4 model2world;
 uniform mat4 view;
 uniform mat4 projection;
+uniform float heightscale;
 
 
 void main()

@@ -7,6 +7,7 @@ out vec3 pos;
 uniform mat4 model2world;
 uniform mat4 view;
 uniform mat4 projection;
+uniform float heightscale;
 
 
 void main()

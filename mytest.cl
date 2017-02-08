@@ -24,11 +24,11 @@ __kernel void action(
 		
 		// west index
 		int westx = (x - 1 + dimension) % dimension; 
-		int westindex = index( y, westx, dimension);
+		int westindex = index( westx, y, dimension);
 		
 		// east index
 		int eastx = (x + 1) % dimension; 
-		int eastindex = index( y, eastx, dimension);
+		int eastindex = index( eastx, y, dimension);
 		
 		// load the values
 		float north = a[northindex];

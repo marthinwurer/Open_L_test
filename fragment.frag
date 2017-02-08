@@ -55,7 +55,8 @@ learnopengl.com
 */
 
 vec4 alpine_gradient(float height){
-	if( height < 0.3){
+	if( height < 0.3)
+	{
 		return mix(transparent, green, height/ 0.3);
 	}
     else if( height < 0.5)
@@ -80,12 +81,14 @@ void main()
 {
 	vec4 objectcolor = alpine_gradient(pos.y);
 	vec3 lightDir = vec3(1.0, 0.0, 0.0);
+	vec3 normal = normalize(norm.xyz);
 	
-	float ambientStrength = 0.1f;
+	float ambientStrength = 0.5f;
     float ambient = ambientStrength;
-    float diffuse = max(dot(normalize(norm.xyz), lightDir), 0.0);
+    float diffuse = max(dot(normal, lightDir), -1.0) * 0.5;
 
 //    color = vec4(pos.y, pos.y, pos.y, 1.0f);
 
+//color = vec4(normal, 1);
 	color = vec4(objectcolor.xyz * (ambient + diffuse), objectcolor.w);
 } 
