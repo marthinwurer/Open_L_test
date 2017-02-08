@@ -79,13 +79,13 @@ vec4 alpine_gradient(float height){
 void main()
 {
 	vec4 objectcolor = alpine_gradient(pos.y);
-	vec4 lightDir = vec4(0.0, 0.0, 1.0, 0.0);
+	vec3 lightDir = vec3(1.0, 0.0, 0.0);
 	
-	float ambientStrength = 0.5f;
-    vec4 ambient = ambientStrength * white;
-    float diffuse = max(dot(norm, lightDir), 0.0);
+	float ambientStrength = 0.1f;
+    float ambient = ambientStrength;
+    float diffuse = max(dot(normalize(norm.xyz), lightDir), 0.0);
 
 //    color = vec4(pos.y, pos.y, pos.y, 1.0f);
 
-	color = objectcolor * (ambient + diffuse);
+	color = vec4(objectcolor.xyz * (ambient + diffuse), objectcolor.w);
 } 

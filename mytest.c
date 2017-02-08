@@ -415,6 +415,16 @@ int main( int argc, char ** argv){
     	b->values[ii] = a->values[ii];
     }
 #endif // DO_AVERAGE
+
+
+    // calculate the normals
+    calc_normals(cl_queue, normal_kern, dimension, buff_size, &buf_a, &buf_normals, 1.0, 1.0);
+
+    // read them back
+	CALL_CL_GUARDED(clEnqueueReadBuffer, (
+	        cl_queue, buf_normals, /*blocking*/ CL_TRUE, /*offset*/ 0,
+			buff_size * sizeof(cl_float4), normals,
+	        0, NULL, NULL));
 #endif // DO_CL
 	/////////////////////////////////////////////
 	// RENDERING
@@ -689,6 +699,7 @@ int main( int argc, char ** argv){
         for( size_t ii = 0; ii < num_vertexes; ii++){
         	vertexes[ii].coords.y = b->values[ii];
         	vertexes[ii].coords.w = 0.0;
+        	vertexes[ii].normal = normals[ii];
         }
 
 //        for( int ii = 0; ii < num_corners; ii++){
@@ -739,7 +750,7 @@ int main( int argc, char ** argv){
         mat4x4_mul_vec4(temp, eye_roatation, eye);
         // add it to the camera position
         vec3_add(eye, temp, camera_position);
-        printf("eye{%f, %f, %f}\n", eye[0], eye[1], eye[2]);
+//        printf("eye{%f, %f, %f}\n", eye[0], eye[1], eye[2]);
         // look from it to the camera position
         mat4x4_look_at(view_matrix, eye, camera_position, up);
 
