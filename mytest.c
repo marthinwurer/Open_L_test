@@ -36,6 +36,9 @@ const int SCREEN_WIDTH = 1024; // the width of the screen in pixels
 const int SCREEN_HEIGHT = 1024; // the height of the screen in pixels
 
 #define DO_CL
+#ifdef DO_CL
+//#define DO_AVERAGE
+#endif
 
 
 // this struct holds the data needed to render a vertex
@@ -205,12 +208,51 @@ void cl_average(cl_command_queue cl_queue, cl_kernel test_kern,
 			(cl_queue, test_kern,
 					/*dimensions*/ 1, NULL, gdim, ldim,
 					0, NULL, NULL));
+#if 0
+extern CL_API_ENTRY cl_int CL_API_CALL
+clEnqueueNDRangeKernel(cl_command_queue /* command_queue */,
+                       cl_kernel        /* kernel */,
+                       cl_uint          /* work_dim */,
+                       const size_t *   /* global_work_offset */,
+                       const size_t *   /* global_work_size */,
+                       const size_t *   /* local_work_size */,
+                       cl_uint          /* num_events_in_wait_list */,
+                       const cl_event * /* event_wait_list */,
+                       cl_event *       /* event */) CL_API_SUFFIX__VERSION_1_0;
+#endif
 
 	// wait until the kernel is finished
 	CALL_CL_GUARDED(clFinish, (cl_queue));
 
 }
 
+void calc_normals(cl_command_queue cl_queue, cl_kernel kern,
+		cl_int dimension, cl_int buff_size, cl_mem * vertexes, cl_mem * normals, cl_float dx, cl_float dy  ){
+	CALL_CL_GUARDED(clFinish, (cl_queue));
+
+	// set up parameters to the call
+	size_t ldim[] = { 32 };
+	size_t gdim[] = { buff_size };
+
+
+	// set the arguments
+	CALL_CL_GUARDED(clSetKernelArg, (kern, 0, sizeof(vertexes), vertexes));
+	CALL_CL_GUARDED(clSetKernelArg, (kern, 1, sizeof(normals), normals));
+	CALL_CL_GUARDED(clSetKernelArg, (kern, 2, sizeof(cl_int), &dimension));
+	CALL_CL_GUARDED(clSetKernelArg, (kern, 3, sizeof(cl_int), &buff_size));
+	CALL_CL_GUARDED(clSetKernelArg, (kern, 4, sizeof(cl_float), &dx));
+	CALL_CL_GUARDED(clSetKernelArg, (kern, 5, sizeof(cl_float), &dy));
+
+	// enqueue the kernel (plus magic constant arrays copied from the example
+	CALL_CL_GUARDED(clEnqueueNDRangeKernel,
+			(cl_queue, kern,
+					/*dimensions*/ 1, NULL, gdim, ldim,
+					0, NULL, NULL));
+
+	// wait until the kernel is finished
+	CALL_CL_GUARDED(clFinish, (cl_queue));
+
+}
 
 int main( int argc, char ** argv){
 
@@ -238,6 +280,10 @@ int main( int argc, char ** argv){
 	map2d * b = new_map2d(dimension, dimension);
 
 	cl_int buff_size = a->height * a->width;
+    GLuint num_vertexes = dimension * dimension;
+
+	// malloc space for the normals
+	cl_float4 * normals = malloc(buff_size * sizeof(cl_float4));
 
 
 #ifdef DO_CL
@@ -257,7 +303,7 @@ int main( int argc, char ** argv){
 	CALL_CL_GUARDED(clGetPlatformIDs, (0, NULL, &plat_count));
 
 	if( plat_count < 1){
-		printf("No Platforms availible! Aborting\n");
+		printf("No Platforms available! Aborting\n");
 		abort();
 	}
 	printf("Number of platforms: %d\n", plat_count);
@@ -335,6 +381,11 @@ int main( int argc, char ** argv){
 			sizeof(float) * buff_size, 0, &status);
 	CHECK_CL_ERROR(status, "clCreateBuffer");
 
+	// allocate memory for the normals
+	cl_mem buf_normals = clCreateBuffer(context, CL_MEM_WRITE_ONLY,
+			sizeof(cl_float4) * buff_size, 0, &status);
+
+
 
 	// Transfer the buffer to the device
 	CALL_CL_GUARDED(clEnqueueWriteBuffer, (
@@ -344,23 +395,12 @@ int main( int argc, char ** argv){
 
 	// wait until the device is free
 	CALL_CL_GUARDED(clFinish, (cl_queue));
+#ifdef DO_AVERAGE
 
 	size_t ldim[] = { 32 };
 	size_t gdim[] = { buff_size };
 
 	cl_average(cl_queue, test_kern, dimension, buff_size, &buf_a, &buf_b);
-#if 0
-extern CL_API_ENTRY cl_int CL_API_CALL
-clEnqueueNDRangeKernel(cl_command_queue /* command_queue */,
-                       cl_kernel        /* kernel */,
-                       cl_uint          /* work_dim */,
-                       const size_t *   /* global_work_offset */,
-                       const size_t *   /* global_work_size */,
-                       const size_t *   /* local_work_size */,
-                       cl_uint          /* num_events_in_wait_list */,
-                       const cl_event * /* event_wait_list */,
-                       cl_event *       /* event */) CL_API_SUFFIX__VERSION_1_0;
-#endif
 
 	// wait until the kernel is finished
 	CALL_CL_GUARDED(clFinish, (cl_queue));
@@ -370,8 +410,12 @@ clEnqueueNDRangeKernel(cl_command_queue /* command_queue */,
 	        cl_queue, buf_b, /*blocking*/ CL_TRUE, /*offset*/ 0,
 			buff_size * sizeof(float), b->values,
 	        0, NULL, NULL));
-#endif
-
+#else
+    for( size_t ii = 0; ii < num_vertexes; ii++){
+    	b->values[ii] = a->values[ii];
+    }
+#endif // DO_AVERAGE
+#endif // DO_CL
 	/////////////////////////////////////////////
 	// RENDERING
 	/////////////////////////////////////////////
@@ -502,7 +546,6 @@ clEnqueueNDRangeKernel(cl_command_queue /* command_queue */,
     // CREATE ARRAYS
     ////////////////////////////////////////////
 
-    GLuint num_vertexes = dimension * dimension;
 
     // make the array for indexes (VBO)
     vertex_data * vertexes = malloc(num_vertexes * sizeof( vertex_data));
@@ -613,15 +656,11 @@ clEnqueueNDRangeKernel(cl_command_queue /* command_queue */,
     mat4x4_perspective(proj_matrix, 0.785398f, 800.0f/600.0f, 0.1f, 2000.0f);
 
 
-#ifdef DO_CL
+#ifdef DO_AVERAGE
     // make some pointers for swapping the arrays
     cl_mem * buf_1 = &buf_a;
     cl_mem * buf_2 = &buf_b;
     cl_mem * swap_buff = NULL;
-#else
-    for( size_t ii = 0; ii < num_vertexes; ii++){
-    	b->values[ii] = a->values[ii];
-    }
 #endif
 
     // timing stuff
@@ -740,10 +779,10 @@ clEnqueueNDRangeKernel(cl_command_queue /* command_queue */,
 //        glfwSwapInterval(1);
         glfwSwapBuffers(gl_window);
 
-#ifdef DO_CL
 
     	// recompute the next step
     	// wait until the device is free
+#ifdef DO_AVERAGE
 		cl_average(cl_queue, test_kern, dimension, buff_size, buf_1, buf_2);
 
 
@@ -760,6 +799,7 @@ clEnqueueNDRangeKernel(cl_command_queue /* command_queue */,
     	swap_buff = buf_1;
     	buf_1 = buf_2;
     	buf_2 = swap_buff;
+
 #endif
 
     	// Do the timing
