@@ -26,7 +26,7 @@ out vec4 fragColor;
 
 void main()
 {
-	vec3 lightDir = normalize(vec3(0,0,1));
+	vec3 lightDir = normalize(vec3(1,0,1));
 	float lamb = max(dot(lightDir, fragNorm), 0);
 	vec3 viewDir = normalize(-fragPos);
 	vec3 halfDir = normalize(lightDir + viewDir);

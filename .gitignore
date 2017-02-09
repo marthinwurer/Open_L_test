@@ -36,6 +36,7 @@
 .cproject
 .project
 *.settings
+.gdb_history
 
 # executables
 cl-demo

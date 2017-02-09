@@ -19,7 +19,7 @@ print-devices: print-devices.c cl-helper.c
 cl-demo: cl-demo.c cl-helper.c
 	gcc $(CL_CFLAGS) $(CL_LDFLAGS) -std=gnu99 -o$@ $^ -lrt -lOpenCL
 	
-mytest: mytest.c cl-helper.c DiamondSquare.c map2d.c utilities.c xoroshiro128plus.c interpolation.c
+mytest: mytest.c my_cl_helper.c DiamondSquare.c map2d.c utilities.c xoroshiro128plus.c interpolation.c
 	gcc $(CL_CFLAGS) $(CL_LDFLAGS) -std=gnu99 -g -ggdb -o$@ $^ -lm -lrt -lOpenCL -lSDL2 $(GL_LIBS)
 
 clean:

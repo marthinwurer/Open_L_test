@@ -14,7 +14,7 @@ uniform float heightscale;
 
 void main()
 {
-    gl_Position = projection * view * model2world * vec4(position.x, position.y * 100.0f, position.z, 1.0f);
+    gl_Position = projection * view * model2world * vec4(position.x, position.y * heightscale, position.z, 1.0f);
     pos = model2world * position;
     norm = normal;
 }

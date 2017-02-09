@@ -12,7 +12,7 @@
 #include <CL/cl.h>
 #endif
 
-#include "cl-helper.h"
+#include "my_cl_helper.h"
 
 #include <stdlib.h>
 #include <unistd.h>
@@ -336,7 +336,7 @@ int main( int argc, char ** argv){
     seed(&rand, (int) currtime, currtime * 3); // seed the RNG
 
 	// do local memory allocation
-	map2d * a = DSCreate(9, &rand);
+	map2d * a = DSCreate(10, &rand);
 //	map2d * a = new_map2d(4, 4);//DSCreate(3, &rand);
 
 	cl_int dimension = a->height;
@@ -349,7 +349,9 @@ int main( int argc, char ** argv){
 	// malloc space for the normals
 	cl_float4 * normals = malloc(buff_size * sizeof(cl_float4));
 
-	float height_scale = (float) dimension / (float) 4;
+	float height_scale = (float) dimension / (float) 8;
+
+	camera_position[1] = height_scale;
 
 
 #ifdef DO_CL
@@ -363,63 +365,65 @@ int main( int argc, char ** argv){
 	cl_context context; // holds the context
 	cl_command_queue cl_queue; // a command queue for the context
 
-	// get the device ID range to work with.
-	// get number of platforms
-	cl_uint plat_count;
-	CALL_CL_GUARDED(clGetPlatformIDs, (0, NULL, &plat_count));
+	int status = createCLcontextonGL(platform_number, device_number, &context, &cl_queue);
 
-	if( plat_count < 1){
-		printf("No Platforms available! Aborting\n");
-		abort();
-	}
-	printf("Number of platforms: %d\n", plat_count);
-
-	// allocate memory, get list of platform handles
-	cl_platform_id *platforms =
-			(cl_platform_id *) malloc(plat_count*sizeof(cl_platform_id));
-	CHECK_SYS_ERROR(!platforms, "allocating platform array");
-	CALL_CL_GUARDED(clGetPlatformIDs, (plat_count, platforms, NULL));
-
-	// get the devices for the selected platform
-	cl_platform_id plat = platforms[platform_number];
-
-	// get number of devices in platform
-	cl_uint dev_count;
-	CALL_CL_GUARDED(clGetDeviceIDs, (plat, CL_DEVICE_TYPE_ALL,
-			0, NULL, &dev_count));
-	printf("Number of devices: %d\n", dev_count);
-
-	// allocate memory, get list of device handles in platform
-	cl_device_id *devices =
-			(cl_device_id *) malloc(dev_count*sizeof(cl_device_id));
-	CHECK_SYS_ERROR(!devices, "allocating device array");
-
-	// get the list of devices (very important)
-	CALL_CL_GUARDED(clGetDeviceIDs, (plat, CL_DEVICE_TYPE_ALL,
-			dev_count, devices, NULL));
-
-	cl_device_id dev = devices[device_number];
-
-	// create a context
-	cl_context_properties cps[3] = {
-			CL_CONTEXT_PLATFORM, (cl_context_properties) plat, 0 };
-
-	cl_int status;
-	context = clCreateContext(
-			NULL, 1, &dev, NULL, NULL, &status);
-	CHECK_CL_ERROR(status, "clCreateContext");
-
-	// free the device lists
-	free(devices);
-	free(platforms);
-
-
-	// create a command queue
-	cl_command_queue_properties qprops = 0;
-
-
-	cl_queue = clCreateCommandQueue(context, dev, qprops, &status);
-	CHECK_CL_ERROR(status, "clCreateCommandQueue");
+//	// get the device ID range to work with.
+//	// get number of platforms
+//	cl_uint plat_count;
+//	CALL_CL_GUARDED(clGetPlatformIDs, (0, NULL, &plat_count));
+//
+//	if( plat_count < 1){
+//		printf("No Platforms available! Aborting\n");
+//		abort();
+//	}
+//	printf("Number of platforms: %d\n", plat_count);
+//
+//	// allocate memory, get list of platform handles
+//	cl_platform_id *platforms =
+//			(cl_platform_id *) malloc(plat_count*sizeof(cl_platform_id));
+//	CHECK_SYS_ERROR(!platforms, "allocating platform array");
+//	CALL_CL_GUARDED(clGetPlatformIDs, (plat_count, platforms, NULL));
+//
+//	// get the devices for the selected platform
+//	cl_platform_id plat = platforms[platform_number];
+//
+//	// get number of devices in platform
+//	cl_uint dev_count;
+//	CALL_CL_GUARDED(clGetDeviceIDs, (plat, CL_DEVICE_TYPE_ALL,
+//			0, NULL, &dev_count));
+//	printf("Number of devices: %d\n", dev_count);
+//
+//	// allocate memory, get list of device handles in platform
+//	cl_device_id *devices =
+//			(cl_device_id *) malloc(dev_count*sizeof(cl_device_id));
+//	CHECK_SYS_ERROR(!devices, "allocating device array");
+//
+//	// get the list of devices (very important)
+//	CALL_CL_GUARDED(clGetDeviceIDs, (plat, CL_DEVICE_TYPE_ALL,
+//			dev_count, devices, NULL));
+//
+//	cl_device_id dev = devices[device_number];
+//
+//	// create a context
+//	cl_context_properties cps[3] = {
+//			CL_CONTEXT_PLATFORM, (cl_context_properties) plat, 0 };
+//
+//	cl_int status;
+//	context = clCreateContext(
+//			NULL, 1, &dev, NULL, NULL, &status);
+//	CHECK_CL_ERROR(status, "clCreateContext");
+//
+//	// free the device lists
+//	free(devices);
+//	free(platforms);
+//
+//
+//	// create a command queue
+//	cl_command_queue_properties qprops = 0;
+//
+//
+//	cl_queue = clCreateCommandQueue(context, dev, qprops, &status);
+//	CHECK_CL_ERROR(status, "clCreateCommandQueue");
 
 
 	// load a kernel
@@ -509,7 +513,7 @@ int main( int argc, char ** argv){
     glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
 
 
-    GLFWwindow* gl_window = glfwCreateWindow(800, 600, "LearnOpenGL", NULL, NULL);
+    GLFWwindow* gl_window = glfwCreateWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "LearnOpenGL", NULL, NULL);
     if (gl_window == NULL)
     {
         puts( "Failed to create GLFW window\n");
@@ -773,9 +777,9 @@ int main( int argc, char ** argv){
         	vertexes[ii].normal.w = normals[ii].w;
         }
 
-        cl_float4 cur_norm = vertexes[buff_size - 1].normal;
-
-        printf("norm1{%f, %f, %f, %f}\n", cur_norm.x, cur_norm.y, cur_norm.z, cur_norm.w);
+//        cl_float4 cur_norm = vertexes[buff_size - 1].normal;
+//
+//        printf("norm1{%f, %f, %f, %f}\n", cur_norm.x, cur_norm.y, cur_norm.z, cur_norm.w);
 
 //        for( int ii = 0; ii < num_corners; ii++){
 //        	if(vertexes[ebo[ii]].y == 0.f){
@@ -880,11 +884,12 @@ int main( int argc, char ** argv){
 //    			buff_size * sizeof(float), b->values,
 //    	        0, NULL, NULL));
 //    	CALL_CL_GUARDED(clFinish, (cl_queue));
-//
+#endif
+
 //        gettimeofday(&end, NULL);
 
 		// calculate the new normals
-		calc_normals(cl_queue, normal_kern, dimension, buff_size, buf_1, &buf_normals, 1.0, height_scale, 1.0);
+		calc_normals(cl_queue, normal_kern, dimension, buff_size, buf_2, &buf_normals, 1.0, height_scale, 1.0);
     	CALL_CL_GUARDED(clFinish, (cl_queue));
 
 		// read them back
@@ -895,6 +900,7 @@ int main( int argc, char ** argv){
     	CALL_CL_GUARDED(clFinish, (cl_queue));
 
     	// swap the openCL buffers
+#ifdef DO_AVERAGE
 //    	swap_buff = buf_1;
 //    	buf_1 = buf_2;
 //    	buf_2 = swap_buff;
