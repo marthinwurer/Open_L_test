@@ -31,12 +31,13 @@
 # Debug files
 *.dSYM/
 *.su
+.gdb_history
 
 # Project files
 .cproject
 .project
 *.settings
-.gdb_history
+*.swp
 
 # executables
 cl-demo

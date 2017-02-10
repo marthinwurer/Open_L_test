@@ -38,7 +38,7 @@ const int SCREEN_HEIGHT = 1024; // the height of the screen in pixels
 
 #define DO_CL
 #ifdef DO_CL
-#define DO_AVERAGE
+//#define DO_AVERAGE
 #endif
 
 
@@ -367,65 +367,6 @@ int main( int argc, char ** argv){
 
 	int status = createCLcontextonGL(platform_number, device_number, &context, &cl_queue);
 
-//	// get the device ID range to work with.
-//	// get number of platforms
-//	cl_uint plat_count;
-//	CALL_CL_GUARDED(clGetPlatformIDs, (0, NULL, &plat_count));
-//
-//	if( plat_count < 1){
-//		printf("No Platforms available! Aborting\n");
-//		abort();
-//	}
-//	printf("Number of platforms: %d\n", plat_count);
-//
-//	// allocate memory, get list of platform handles
-//	cl_platform_id *platforms =
-//			(cl_platform_id *) malloc(plat_count*sizeof(cl_platform_id));
-//	CHECK_SYS_ERROR(!platforms, "allocating platform array");
-//	CALL_CL_GUARDED(clGetPlatformIDs, (plat_count, platforms, NULL));
-//
-//	// get the devices for the selected platform
-//	cl_platform_id plat = platforms[platform_number];
-//
-//	// get number of devices in platform
-//	cl_uint dev_count;
-//	CALL_CL_GUARDED(clGetDeviceIDs, (plat, CL_DEVICE_TYPE_ALL,
-//			0, NULL, &dev_count));
-//	printf("Number of devices: %d\n", dev_count);
-//
-//	// allocate memory, get list of device handles in platform
-//	cl_device_id *devices =
-//			(cl_device_id *) malloc(dev_count*sizeof(cl_device_id));
-//	CHECK_SYS_ERROR(!devices, "allocating device array");
-//
-//	// get the list of devices (very important)
-//	CALL_CL_GUARDED(clGetDeviceIDs, (plat, CL_DEVICE_TYPE_ALL,
-//			dev_count, devices, NULL));
-//
-//	cl_device_id dev = devices[device_number];
-//
-//	// create a context
-//	cl_context_properties cps[3] = {
-//			CL_CONTEXT_PLATFORM, (cl_context_properties) plat, 0 };
-//
-//	cl_int status;
-//	context = clCreateContext(
-//			NULL, 1, &dev, NULL, NULL, &status);
-//	CHECK_CL_ERROR(status, "clCreateContext");
-//
-//	// free the device lists
-//	free(devices);
-//	free(platforms);
-//
-//
-//	// create a command queue
-//	cl_command_queue_properties qprops = 0;
-//
-//
-//	cl_queue = clCreateCommandQueue(context, dev, qprops, &status);
-//	CHECK_CL_ERROR(status, "clCreateCommandQueue");
-
-
 	// load a kernel
 	char * s_kernel = read_file("mytest.cl");
 	cl_kernel test_kern = kernel_from_string( context, s_kernel, "action", NULL);
@@ -735,7 +676,7 @@ int main( int argc, char ** argv){
 
     // make the projection/perspective matrix
     mat4x4 proj_matrix;
-    mat4x4_perspective(proj_matrix, 0.785398f, 800.0f/600.0f, 0.1f, 2000.0f);
+    mat4x4_perspective(proj_matrix, 0.785398f, (float)SCREEN_WIDTH/(float)SCREEN_HEIGHT, 0.1f, 2000.0f);
 
 
 #ifdef DO_AVERAGE
@@ -889,7 +830,7 @@ int main( int argc, char ** argv){
 //        gettimeofday(&end, NULL);
 
 		// calculate the new normals
-		calc_normals(cl_queue, normal_kern, dimension, buff_size, buf_2, &buf_normals, 1.0, height_scale, 1.0);
+		calc_normals(cl_queue, normal_kern, dimension, buff_size, &buf_a, &buf_normals, 1.0, height_scale, 1.0);
     	CALL_CL_GUARDED(clFinish, (cl_queue));
 
 		// read them back

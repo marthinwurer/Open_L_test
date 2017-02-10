@@ -6,13 +6,21 @@ out vec4 color;
 vec4 black = vec4(0,0,0,1);
 vec4 transparent = vec4(0,0,0,0);
 vec4 green = vec4(0,1,0,1);
-vec4 dgreen = vec4(.2, 1, .2, 1);
-vec4 brown = vec4(165.0/256.0,82.0/256.0,45.0/256.0, 1);
+vec4 dgreen = vec4(56.0/256.0,124.0/256.0,68.0/256.0, 1);
+vec4 brown = vec4(111.0/256.0,78.0/256.0,55.0/256.0, 1);
 vec4 white = vec4(1,1,1,1);
 //do something with these to avoid branching
 //vec4 colorArr[4] = vec4[4](green, dgreen, brown, white)
 //float colorInterpVal[4] = float[4](0, 2.0 / 3.0, 5.0 / 6.0, 1.0);
 
+/*
+const SDL_Color black = {0, 0, 0, 255};
+const SDL_Color blue = {0, 0, 255, 255};
+const SDL_Color green = {0, 255, 0, 255};
+const SDL_Color dgreen = {56, 124, 68, 255};
+const SDL_Color brown = {111, 78, 55, 255};
+const SDL_Color white = {255, 255, 255, 255};
+*/
 
 
 /*#version 430
@@ -57,15 +65,15 @@ learnopengl.com
 vec4 alpine_gradient(float height){
 	if( height < 0.3)
 	{
-		return mix(transparent, green, height/ 0.3);
+		return mix(transparent, dgreen, height/ 0.3);
 	}
-    else if( height < 0.5)
+    else if( height < 2.0/3.0)
     {
-        return mix(green, dgreen, (height)/(0.5));
+        return mix(green, dgreen, (height)/(2.0/3.0));
     }
     else if( height < 5.0/6.0)
     {
-        return mix( dgreen, brown, (height - 0.5) / (2.0/6.0));
+        return mix( dgreen, brown, (height -(2.0/3.0) ) / (1.0/6.0));
     }
     else if(height <= 1.0)
     {
@@ -80,12 +88,12 @@ vec4 alpine_gradient(float height){
 void main()
 {
 	vec4 objectcolor = alpine_gradient(pos.y);
-	vec3 lightDir = vec3(1.0, 0.0, 0.0);
+	vec3 lightDir = vec3(-1.0, 0.0, 0.0);
 	vec3 normal = normalize(norm.xyz);
 	
-	float ambientStrength = 0.5f;
+	float ambientStrength = 0.7f;
     float ambient = ambientStrength;
-    float diffuse = max(dot(normal, lightDir), -1.0) * 0.5;
+    float diffuse = max(dot(normal, lightDir), -1.0) * 0.9;
 
 //    color = vec4(pos.y, pos.y, pos.y, 1.0f);
 

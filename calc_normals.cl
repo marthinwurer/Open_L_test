@@ -17,17 +17,27 @@ __kernel void calc_normals(
 		int x = gid % dimension;
 		int y = gid / dimension;
 		
+		// get the northward ( y - 1) index, and check for looping out of bounds
+		int northy = (y - 1 + dimension) % dimension; 
+		int northindex = index( x, northy, dimension);
+		
 		// south index
 		int southy = (y + 1) % dimension; 
 		int southindex = index( x, southy, dimension);
+		
+		// west index
+		int westx = (x - 1 + dimension) % dimension; 
+		int westindex = index( westx, y, dimension);
 		
 		// east index
 		int eastx = (x + 1) % dimension; 
 		int eastindex = index( eastx, y, dimension);
 		
 		// load the values
+		float north =  a[northindex] * dy;
 		float south = a[southindex] * dy;
 		float east =  a[eastindex] * dy;
+		float west =  a[westindex] * dy;
 		float current = a[gid] * dy;
 		
 		/*
@@ -45,14 +55,40 @@ __kernel void calc_normals(
 
 		Nz = UxVy - UyVx
 */
-		float3 current_point = (float3)(0.0f, current, 0.0f);
-		float3 south_point = (float3)(0.0f, south, dz);
-		float3 east_point = (float3)(dx, east, 0.0f);
-		float3 z_vector = south_point - current_point;
-		float3 x_vector = east_point - current_point;
+		float3 c = (float3)(0.0f, current, 0.0f);
+		float3 s = (float3)(0.0f, south, dz);
+		float3 e = (float3)(dx, east, 0.0f);
+		float3 w = (float3)(-dx, west, 0.0f);
+		float3 n = (float3)(0.0f, north, -dz);
+
+		float3 z_vector = s - c;
+		float3 x_vector = e - c;
 		
 		// store the cross product of those vectors
-		float3 output = cross(z_vector, x_vector);
+		float3 se = cross(z_vector, x_vector);
+		
+		float3 U = e - c;
+		float3 V = n - c;
+		float3 ne = cross(U, V);
+		
+		U = V;
+		V = w - c;
+		float3 nw = cross(U, V);
+		
+		U = V;
+		V = z_vector;
+		float3 sw = cross(U, V);
+		
+		
+		
+
+		
+		float3 output = nw + sw + ne + se;
+
+		
+		
+		
+		
 		out[gid] = (float4)(normalize(output), 1.0f);
 	}
 }
