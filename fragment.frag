@@ -3,12 +3,17 @@ in vec4 pos;
 in vec4 norm;
 out vec4 color;
 
+uniform vec4 camera_pos;
+
+
 vec4 black = vec4(0,0,0,1);
 vec4 transparent = vec4(0,0,0,0);
 vec4 green = vec4(0,1,0,1);
 vec4 dgreen = vec4(56.0/256.0,124.0/256.0,68.0/256.0, 1);
 vec4 brown = vec4(111.0/256.0,78.0/256.0,55.0/256.0, 1);
 vec4 white = vec4(1,1,1,1);
+vec4 gray = vec4(0.5, 0.5, 0.5, 0.5);
+vec4 skyblue = vec4(182.0/256.0, 211.0/256.0, 239.0/256.0, 1.0f);
 //do something with these to avoid branching
 //vec4 colorArr[4] = vec4[4](green, dgreen, brown, white)
 //float colorInterpVal[4] = float[4](0, 2.0 / 3.0, 5.0 / 6.0, 1.0);
@@ -97,6 +102,9 @@ void main()
 
 //    color = vec4(pos.y, pos.y, pos.y, 1.0f);
 
-//color = vec4(normal, 1);
-	color = vec4(objectcolor.xyz * (ambient + diffuse), objectcolor.w);
+	float fog = length( pos - camera_pos) / 2000.0;
+	fog = fog * fog;
+
+//	color = vec4(fog, fog, fog, 1);
+	color = mix(vec4(objectcolor.xyz * (ambient + diffuse), objectcolor.w), skyblue, fog);
 } 

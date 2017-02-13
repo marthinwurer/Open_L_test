@@ -529,6 +529,7 @@ int main( int argc, char ** argv){
     GLint viewLocation = glGetUniformLocation(shaderProgram, "view");
     GLint projectionLocation = glGetUniformLocation(shaderProgram, "projection");
     GLint heightscale = glGetUniformLocation(shaderProgram, "heightscale");
+    GLint camera_pos = glGetUniformLocation(shaderProgram, "camera_pos");
 
 
     // delete the shaders and strings, as they are not needed anymore
@@ -684,6 +685,31 @@ int main( int argc, char ** argv){
     cl_mem * buf_1 = &buf_a;
     cl_mem * buf_2 = &buf_b;
     cl_mem * swap_buff = NULL;
+#else
+    cl_mem * buf_2 = &buf_a;
+
+    // if not doing any more to the hieghtmap, only have to do this once.
+    // transfer the heightmap from the openCL buffer to the openGL one
+    for( size_t ii = 0; ii < num_vertexes; ii++){
+    	vertexes[ii].coords.y = b->values[ii];
+    	vertexes[ii].coords.w = 0.0;
+    	vertexes[ii].normal.x = normals[ii].x;
+    	vertexes[ii].normal.y = normals[ii].y;
+    	vertexes[ii].normal.z = normals[ii].z;
+    	vertexes[ii].normal.w = normals[ii].w;
+    }
+
+    // transfer the new GL buffer
+    // set the type of the VBO to an array buffer
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+
+    // write the vertices to the buffer
+    glBufferData(GL_ARRAY_BUFFER, 0, NULL, GL_STREAM_DRAW); // invalidate the old buffer
+    glBufferData(GL_ARRAY_BUFFER, num_vertexes * sizeof(vertex_data), vertexes, GL_STREAM_DRAW);
+
+    // unbind the VBO
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+
 #endif
 
     // timing stuff
@@ -708,6 +734,7 @@ int main( int argc, char ** argv){
 
         glfwPollEvents();
 
+#ifdef DO_AVERAGE
         // transfer the heightmap from the openCL buffer to the openGL one
         for( size_t ii = 0; ii < num_vertexes; ii++){
         	vertexes[ii].coords.y = b->values[ii];
@@ -739,12 +766,14 @@ int main( int argc, char ** argv){
 		// unbind the VBO
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 
+#endif
 
 
         // render the current state
 
         // clear the screen
-        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+//        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+        glClearColor(182.0/256.0, 211.0/256.0, 239.0/256.0, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // also clear the depth buffer
 
         // pick the shader program to use
@@ -782,6 +811,8 @@ int main( int argc, char ** argv){
         glUniformMatrix4fv(projectionLocation, 1, GL_FALSE, (GLfloat *) proj_matrix);
 
         glUniform1f(heightscale, height_scale);
+
+        glUniform4f(camera_pos, camera_position[0], camera_position[1], camera_position[2], 0.0);
 
 
         // bind the VAO
@@ -825,12 +856,11 @@ int main( int argc, char ** argv){
 //    			buff_size * sizeof(float), b->values,
 //    	        0, NULL, NULL));
 //    	CALL_CL_GUARDED(clFinish, (cl_queue));
-#endif
 
 //        gettimeofday(&end, NULL);
 
 		// calculate the new normals
-		calc_normals(cl_queue, normal_kern, dimension, buff_size, &buf_a, &buf_normals, 1.0, height_scale, 1.0);
+		calc_normals(cl_queue, normal_kern, dimension, buff_size, buf_2, &buf_normals, 1.0, height_scale, 1.0);
     	CALL_CL_GUARDED(clFinish, (cl_queue));
 
 		// read them back
@@ -841,7 +871,6 @@ int main( int argc, char ** argv){
     	CALL_CL_GUARDED(clFinish, (cl_queue));
 
     	// swap the openCL buffers
-#ifdef DO_AVERAGE
 //    	swap_buff = buf_1;
 //    	buf_1 = buf_2;
 //    	buf_2 = swap_buff;
@@ -857,11 +886,7 @@ int main( int argc, char ** argv){
         mtime = ((seconds) * 1000 + useconds/1000.0) + 0.5;
 
 //        printf("Elapsed time: %ld milliseconds\n", mtime);
-
-
     }
-
-
 }
 
 
