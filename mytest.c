@@ -562,6 +562,7 @@ int main( int argc, char ** argv){
     GLint projectionLocationWater = glGetUniformLocation(shaderProgram, "projection");
     GLint heightscaleWater = glGetUniformLocation(shaderProgram, "heightscale");
     GLint camera_posWater = glGetUniformLocation(shaderProgram, "camera_pos");
+    GLint sensitivityWater = glGetUniformLocation(shaderProgram, "sensitivity");
     // delete the shaders and strings, as they are not needed anymore
     glDeleteShader(vertexShader);
     glDeleteShader(fragmentShader);
@@ -693,7 +694,7 @@ int main( int argc, char ** argv){
     // transfer the heightmap from the openCL buffer to the openGL one
     for( size_t ii = 0; ii < num_vertexes; ii++){
     	vertexes[ii].coords.y = b->values[ii];
-    	vertexes[ii].coords.w = 0.0;
+    	vertexes[ii].coords.w = b->values[ii] > 0.5 ? 0.0: 0.5 - b->values[ii];
     	vertexes[ii].normal.x = normals[ii].x;
     	vertexes[ii].normal.y = normals[ii].y;
     	vertexes[ii].normal.z = normals[ii].z;
@@ -739,7 +740,7 @@ int main( int argc, char ** argv){
         // transfer the heightmap from the openCL buffer to the openGL one
         for( size_t ii = 0; ii < num_vertexes; ii++){
         	vertexes[ii].coords.y = b->values[ii];
-        	vertexes[ii].coords.w = 0.0;
+        	vertexes[ii].coords.w = b->values[ii] > 0.5 ? 0.0: 0.5 - b->values[ii];
         	vertexes[ii].normal.x = normals[ii].x;
         	vertexes[ii].normal.y = normals[ii].y;
         	vertexes[ii].normal.z = normals[ii].z;
@@ -813,7 +814,7 @@ int main( int argc, char ** argv){
 
         glUniform1f(heightscale, height_scale);
 
-        glUniform4f(camera_pos, camera_position[0], camera_position[1], camera_position[2], 0.0);
+        glUniform3f(camera_pos, camera_position[0], camera_position[1], camera_position[2]);
 
 
         // bind the VAO
@@ -834,6 +835,7 @@ int main( int argc, char ** argv){
         glUniformMatrix4fv(viewLocationWater, 1, GL_FALSE, (GLfloat *) view_matrix);
         glUniformMatrix4fv(projectionLocationWater, 1, GL_FALSE, (GLfloat *) proj_matrix);
         glUniform1f(heightscaleWater, height_scale);
+        glUniform1f(sensitivityWater, 0.001);
         glUniform3f(camera_posWater, camera_position[0], camera_position[1], camera_position[2]);
         glDrawElements(GL_TRIANGLES, num_corners, GL_UNSIGNED_INT, 0);
 //        glDrawElements(GL_LINE_LOOP, num_corners, GL_UNSIGNED_INT, 0);
