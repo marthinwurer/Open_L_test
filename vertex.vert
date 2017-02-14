@@ -3,7 +3,7 @@
 layout (location = 0) in vec4 position;
 layout (location = 1) in vec4 normal;
 
-out vec4 pos;
+out vec3 pos;
 out vec4 norm;
 
 uniform mat4 model2world;
@@ -15,6 +15,6 @@ uniform float heightscale;
 void main()
 {
     gl_Position = projection * view * model2world * vec4(position.x, position.y * heightscale, position.z, 1.0f);
-    pos = model2world * position;
+    pos = (model2world * position).xyz;
     norm = normal;
 }

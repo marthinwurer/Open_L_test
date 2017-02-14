@@ -1,9 +1,9 @@
 #version 330 core
-in vec4 pos;
+in vec3 pos;
 in vec4 norm;
 out vec4 color;
 
-uniform vec4 camera_pos;
+uniform vec3 camera_pos;
 
 
 vec4 black = vec4(0,0,0,1);
@@ -104,7 +104,9 @@ void main()
 
 	float fog = length( pos - camera_pos) / 2000.0;
 	fog = fog * fog;
+	fog = min( fog, 1.0);
+	fog = max( 0.0, fog);
 
 //	color = vec4(fog, fog, fog, 1);
-	color = mix(vec4(objectcolor.xyz * (ambient + diffuse), objectcolor.w), skyblue, fog);
+	color = vec4(objectcolor.xyz * (ambient + diffuse), 1-fog);
 } 

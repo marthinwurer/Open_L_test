@@ -561,6 +561,7 @@ int main( int argc, char ** argv){
     GLint viewLocationWater = glGetUniformLocation(shaderProgram, "view");
     GLint projectionLocationWater = glGetUniformLocation(shaderProgram, "projection");
     GLint heightscaleWater = glGetUniformLocation(shaderProgram, "heightscale");
+    GLint camera_posWater = glGetUniformLocation(shaderProgram, "camera_pos");
     // delete the shaders and strings, as they are not needed anymore
     glDeleteShader(vertexShader);
     glDeleteShader(fragmentShader);
@@ -833,6 +834,7 @@ int main( int argc, char ** argv){
         glUniformMatrix4fv(viewLocationWater, 1, GL_FALSE, (GLfloat *) view_matrix);
         glUniformMatrix4fv(projectionLocationWater, 1, GL_FALSE, (GLfloat *) proj_matrix);
         glUniform1f(heightscaleWater, height_scale);
+        glUniform3f(camera_posWater, camera_position[0], camera_position[1], camera_position[2]);
         glDrawElements(GL_TRIANGLES, num_corners, GL_UNSIGNED_INT, 0);
 //        glDrawElements(GL_LINE_LOOP, num_corners, GL_UNSIGNED_INT, 0);
 
