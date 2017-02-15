@@ -3,6 +3,7 @@
 layout (location = 0) in vec4 position;
 
 out vec3 pos;
+out float depth;
 
 uniform mat4 model2world;
 uniform mat4 view;
@@ -13,7 +14,9 @@ uniform float sensitivity;
 
 void main()
 {
-	float current = position.w + position.y - sensitivity; 
+	
+	float current = position.w + position.y;// - sensitivity; 
     gl_Position = projection * view * model2world * vec4(position.x, current * heightscale, position.z, 1.0f);
     pos = position.xyz;
+    depth = position.w;
 }

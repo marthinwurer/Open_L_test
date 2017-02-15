@@ -32,6 +32,7 @@
 #include "DiamondSquare.h"
 #include "interpolation.h"
 #include "linmath.h"
+#include "eventqueue.h"
 
 const int SCREEN_WIDTH = 1024; // the width of the screen in pixels
 const int SCREEN_HEIGHT = 1024; // the height of the screen in pixels
@@ -102,64 +103,19 @@ mat4x4 view_matrix; // moves from world space to camera space
 float camera_rotation = 0.0f; // in rads
 float camera_pitch = 0.0f;
 
+eventqueue key_queue = {0, NULL};
 
 
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode)
 {
-	// When a user presses the escape key, we set the WindowShouldClose property to true,
-	// closing the application
-	if(key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
-		glfwSetWindowShouldClose(window, GL_TRUE);
+	key_event * current = malloc(sizeof(key_event));
+	current->window = window;
+	current->key = key;
+	current->scancode = scancode;
+	current->action = action;
+	current->mode = mode;
 
-	vec4 camera_movement = {0.0f, 0.0f, 0.0f, 1.0f};
-
-
-	mat4x4 temp;
-
-	switch( key ){
-
-	case GLFW_KEY_J:
-		camera_movement[1] -= 0.5;
-		break;
-	case GLFW_KEY_U:
-		camera_movement[1] += 0.5;
-		break;
-	case GLFW_KEY_W:
-		camera_movement[0] += 0.5;
-		break;
-	case GLFW_KEY_S:
-		camera_movement[0] -= 0.5;
-		break;
-	case GLFW_KEY_D:
-		camera_movement[2] += 0.5;
-		break;
-	case GLFW_KEY_A:
-		camera_movement[2] -= 0.5;
-		break;
-	case GLFW_KEY_O:
-		camera_rotation += 0.1;
-		break;
-	case GLFW_KEY_P:
-		camera_rotation -= 0.1;
-		break;
-	case GLFW_KEY_I:
-		camera_pitch += 0.1;
-		break;
-	case GLFW_KEY_K:
-		camera_pitch -= 0.1;
-		break;
-	}
-
-	// rotate the movement vector and add it to the camera position
-	rotate_vec4_y(camera_movement, camera_rotation);
-	vec3_add(camera_position, camera_movement, camera_position);
-
-
-
-
-	// does void casts to blank warnings
-	(void) scancode;
-	(void) mode;
+	enqueue(&key_queue, current);
 }
 
 
@@ -336,7 +292,7 @@ int main( int argc, char ** argv){
     seed(&rand, (int) currtime, currtime * 3); // seed the RNG
 
 	// do local memory allocation
-	map2d * a = DSCreate(10, &rand);
+	map2d * a = DSCreate(9, &rand);
 //	map2d * a = new_map2d(4, 4);//DSCreate(3, &rand);
 
 	cl_int dimension = a->height;
@@ -735,6 +691,61 @@ int main( int argc, char ** argv){
         gettimeofday(&start, NULL);
 
         glfwPollEvents();
+
+
+        // read inputs
+
+        while(isempty(&key_queue)){
+        	key_event * c_event = dequeue(&key_queue);
+        	// When a user presses the escape key, we set the WindowShouldClose property to true,
+        	// closing the application
+        	if(c_event->key == GLFW_KEY_ESCAPE && c_event->action == GLFW_PRESS)
+        		glfwSetWindowShouldClose(c_event->window, GL_TRUE);
+
+        	vec4 camera_movement = {0.0f, 0.0f, 0.0f, 1.0f};
+
+
+        	mat4x4 temp;
+
+        	switch( c_event->key ){
+
+        	case GLFW_KEY_J:
+        		camera_movement[1] -= 0.5;
+        		break;
+        	case GLFW_KEY_U:
+        		camera_movement[1] += 0.5;
+        		break;
+        	case GLFW_KEY_W:
+        		camera_movement[0] += 0.5;
+        		break;
+        	case GLFW_KEY_S:
+        		camera_movement[0] -= 0.5;
+        		break;
+        	case GLFW_KEY_D:
+        		camera_movement[2] += 0.5;
+        		break;
+        	case GLFW_KEY_A:
+        		camera_movement[2] -= 0.5;
+        		break;
+        	case GLFW_KEY_O:
+        		camera_rotation += 0.1;
+        		break;
+        	case GLFW_KEY_P:
+        		camera_rotation -= 0.1;
+        		break;
+        	case GLFW_KEY_I:
+        		camera_pitch += 0.1;
+        		break;
+        	case GLFW_KEY_K:
+        		camera_pitch -= 0.1;
+        		break;
+        	}
+
+        	// rotate the movement vector and add it to the camera position
+        	rotate_vec4_y(camera_movement, camera_rotation);
+        	vec3_add(camera_position, camera_movement, camera_position);
+
+        }
 
 #ifdef DO_AVERAGE
         // transfer the heightmap from the openCL buffer to the openGL one
