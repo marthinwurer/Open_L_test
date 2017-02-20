@@ -41,3 +41,8 @@ key_event * dequeue(eventqueue * queue){
 	queue->size--;
 	return toreturn;
 }
+
+key_event * next_event(eventqueue * queue){
+	glfwPollEvents();
+	return dequeue(queue);
+}

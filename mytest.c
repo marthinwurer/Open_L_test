@@ -695,8 +695,8 @@ int main( int argc, char ** argv){
 
         // read inputs
 
-        while(isempty(&key_queue)){
-        	key_event * c_event = dequeue(&key_queue);
+        key_event * c_event;
+        while((c_event = next_event(&key_queue)) != NULL){
         	// When a user presses the escape key, we set the WindowShouldClose property to true,
         	// closing the application
         	if(c_event->key == GLFW_KEY_ESCAPE && c_event->action == GLFW_PRESS)

@@ -40,6 +40,7 @@ eventqueue * create_eventqueue();
 int isempty(eventqueue * queue);
 void enqueue(eventqueue * queue, key_event * data);
 key_event * dequeue(eventqueue * queue);
+key_event * next_event(eventqueue * queue);
 
 
 #endif /* EVENTQUEUE_H_ */
