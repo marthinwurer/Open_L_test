@@ -12,20 +12,23 @@
 #include <CL/cl.h>
 #endif
 
+// GLEW
+#define GLEW_STATIC
+#include <GL/glew.h>
+// GLFW
+#include <GLFW/glfw3.h>
+
 #include "my_cl_helper.h"
+#include "gl_setup.h"
 
 #include <stdlib.h>
+#include <stdint.h>
 #include <unistd.h>
 #include <stdio.h>
 #include <SDL2/SDL.h>
 #include <time.h>
 #include <sys/time.h>
 
-// GLEW
-#define GLEW_STATIC
-#include <GL/glew.h>
-// GLFW
-#include <GLFW/glfw3.h>
 
 
 #include "map2d.h"
@@ -50,59 +53,7 @@ typedef struct vertex_data{
 } vertex_data;
 
 
-static inline void create_X_rot_mat4x4(mat4x4 M, float angle);
-static inline void create_Y_rot_mat4x4(mat4x4 M, float angle);
-static inline void create_Z_rot_mat4x4(mat4x4 M, float angle);
-
-
-/**
- * rotate the position in toRotate around the given axis by angle radians
- */
-void rotate_vec4_x(vec4 toRotate, float angle){
-	vec4 temp;
-	// rotate it around the origin
-	mat4x4 rotation_matrix;
-	create_X_rot_mat4x4(rotation_matrix, -angle);
-	mat4x4_mul_vec4(temp, rotation_matrix, toRotate);
-
-	toRotate[0] = temp[0];
-	toRotate[1] = temp[1];
-	toRotate[2] = temp[2];
-	toRotate[3] = temp[3];
-}
-void rotate_vec4_y(vec4 toRotate, float angle){
-	vec4 temp;
-	// rotate it around the origin
-	mat4x4 rotation_matrix;
-	create_Y_rot_mat4x4(rotation_matrix, -angle);
-	mat4x4_mul_vec4(temp, rotation_matrix, toRotate);
-
-	toRotate[0] = temp[0];
-	toRotate[1] = temp[1];
-	toRotate[2] = temp[2];
-	toRotate[3] = temp[3];
-}
-void rotate_vec4_z(vec4 toRotate, float angle){
-	vec4 temp;
-	// rotate it around the origin
-	mat4x4 rotation_matrix;
-	create_Z_rot_mat4x4(rotation_matrix, -angle);
-	mat4x4_mul_vec4(temp, rotation_matrix, toRotate);
-
-	toRotate[0] = temp[0];
-	toRotate[1] = temp[1];
-	toRotate[2] = temp[2];
-	toRotate[3] = temp[3];
-}
-
 // Key callback and stuff
-
-vec3 camera_position = {0.0f, 100.0f, 0.0f};
-
-mat4x4 view_matrix; // moves from world space to camera space
-float camera_rotation = 0.0f; // in rads
-float camera_pitch = 0.0f;
-
 eventqueue key_queue = {0, NULL};
 
 
@@ -120,70 +71,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 
 
 
-GLuint compile_shader(const char * filename, GLuint shader_type){
-    GLint success;
-    GLchar infoLog[512];
 
-	GLchar const * shaderSource = read_file(filename);
-
-	// do the fragment shader stuff
-	GLuint shader;
-	shader = glCreateShader(shader_type);
-	glShaderSource(shader, 1, &shaderSource, NULL);
-	glCompileShader(shader);
-	// check for errors
-	glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
-
-	if(!success)
-	{
-		glGetShaderInfoLog(shader, 512, NULL, infoLog);
-		printf( "ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n%s", infoLog );
-		abort();
-	}
-
-	free((char*)shaderSource);
-	return shader;
-}
-
-/**
- * create a rotation matrix around the origin around the given axis for angle radians.
- */
-static inline void create_X_rot_mat4x4(mat4x4 M, float angle)
-{
-	float s = sinf(angle);
-	float c = cosf(angle);
-	mat4x4 R = {
-		{1.f, 0.f, 0.f, 0.f},
-		{0.f,   c,   s, 0.f},
-		{0.f,  -s,   c, 0.f},
-		{0.f, 0.f, 0.f, 1.f}
-	};
-	mat4x4_dup( M, R);
-}
-static inline void create_Y_rot_mat4x4(mat4x4 M, float angle)
-{
-	float s = sinf(angle);
-	float c = cosf(angle);
-	mat4x4 R = {
-		{   c, 0.f,   s, 0.f},
-		{ 0.f, 1.f, 0.f, 0.f},
-		{  -s, 0.f,   c, 0.f},
-		{ 0.f, 0.f, 0.f, 1.f}
-	};
-	mat4x4_dup( M, R);
-}
-static inline void create_Z_rot_mat4x4(mat4x4 M, float angle)
-{
-	float s = sinf(angle);
-	float c = cosf(angle);
-	mat4x4 R = {
-		{   c,   s, 0.f, 0.f},
-		{  -s,   c, 0.f, 0.f},
-		{ 0.f, 0.f, 1.f, 0.f},
-		{ 0.f, 0.f, 0.f, 1.f}
-	};
-	mat4x4_dup( M, R);
-}
 
 struct timeval old;
 void inittime(){
@@ -284,7 +172,6 @@ int main( int argc, char ** argv){
 //	seed(&rand, 12346, 12345);
 
     time_t currtime;
-
     time(&currtime);
 
 
@@ -292,7 +179,7 @@ int main( int argc, char ** argv){
     seed(&rand, (int) currtime, currtime * 3); // seed the RNG
 
 	// do local memory allocation
-	map2d * a = DSCreate(9, &rand);
+	map2d * a = DSCreate(10, &rand);
 //	map2d * a = new_map2d(4, 4);//DSCreate(3, &rand);
 
 	cl_int dimension = a->height;
@@ -306,8 +193,6 @@ int main( int argc, char ** argv){
 	cl_float4 * normals = malloc(buff_size * sizeof(cl_float4));
 
 	float height_scale = (float) dimension / (float) 8;
-
-	camera_position[1] = height_scale;
 
 
 #ifdef DO_CL
@@ -430,7 +315,7 @@ int main( int argc, char ** argv){
     }
 
     // set up the rendering area
-    int width, height;
+    uint32_t width, height;
     glfwGetFramebufferSize(gl_window, &width, &height);
 
     glViewport(0, 0, width, height);
@@ -625,6 +510,11 @@ int main( int argc, char ** argv){
 
     // make the view matrix
 //    vec3 camera_position = {0.0f, 0.0f, -4.0f}; // made it a global for keypress callback becasue I'm a wimp.
+    vec3 camera_position = {0.0f, height_scale, 0.0f};
+
+    mat4x4 view_matrix; // moves from world space to camera space
+    float camera_rotation = 0.0f; // in rads
+    float camera_pitch = 0.0f;
     vec3 origin = {0.0f, 0.0f, 0.0f};
     vec3 up = {0.0f, 1.0f, 0.0f};
     vec3 nw_corner = {0.0f, 100.0f, 0.0f};
@@ -635,7 +525,7 @@ int main( int argc, char ** argv){
 
     // make the projection/perspective matrix
     mat4x4 proj_matrix;
-    mat4x4_perspective(proj_matrix, 0.785398f, (float)SCREEN_WIDTH/(float)SCREEN_HEIGHT, 0.1f, 2000.0f);
+    mat4x4_perspective(proj_matrix, 0.785398f, (float)width/(float)height, 0.1f, 2000.0f);
 
 
 #ifdef DO_AVERAGE
@@ -855,7 +745,7 @@ int main( int argc, char ** argv){
 
 
 
-//        glfwSwapInterval(1);
+        glfwSwapInterval(1);
         glfwSwapBuffers(gl_window);
 
 

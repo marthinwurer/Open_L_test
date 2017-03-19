@@ -631,4 +631,87 @@ static inline void quat_from_mat4x4(quat q, mat4x4 M)
 	q[3] = (M[p[2]][p[1]] - M[p[1]][p[2]])/(2.f*r);
 }
 
+/**
+ * The following funcitons have been created by Benjamin Maitland.
+ */
+/**
+ * Turn M into a rotation matrix around the origin on the given axis for angle radians.
+ */
+static inline void create_X_rot_mat4x4(mat4x4 M, float angle)
+{
+	float s = sinf(angle);
+	float c = cosf(angle);
+	mat4x4 R = {
+		{1.f, 0.f, 0.f, 0.f},
+		{0.f,   c,   s, 0.f},
+		{0.f,  -s,   c, 0.f},
+		{0.f, 0.f, 0.f, 1.f}
+	};
+	mat4x4_dup( M, R);
+}
+static inline void create_Y_rot_mat4x4(mat4x4 M, float angle)
+{
+	float s = sinf(angle);
+	float c = cosf(angle);
+	mat4x4 R = {
+		{   c, 0.f,   s, 0.f},
+		{ 0.f, 1.f, 0.f, 0.f},
+		{  -s, 0.f,   c, 0.f},
+		{ 0.f, 0.f, 0.f, 1.f}
+	};
+	mat4x4_dup( M, R);
+}
+static inline void create_Z_rot_mat4x4(mat4x4 M, float angle)
+{
+	float s = sinf(angle);
+	float c = cosf(angle);
+	mat4x4 R = {
+		{   c,   s, 0.f, 0.f},
+		{  -s,   c, 0.f, 0.f},
+		{ 0.f, 0.f, 1.f, 0.f},
+		{ 0.f, 0.f, 0.f, 1.f}
+	};
+	mat4x4_dup( M, R);
+}
+
+/**
+ * rotate the position in toRotate around the given axis by angle radians
+ */
+static inline void rotate_vec4_x(vec4 toRotate, float angle){
+	vec4 temp;
+	// rotate it around the origin
+	mat4x4 rotation_matrix;
+	create_X_rot_mat4x4(rotation_matrix, -angle);
+	mat4x4_mul_vec4(temp, rotation_matrix, toRotate);
+
+	toRotate[0] = temp[0];
+	toRotate[1] = temp[1];
+	toRotate[2] = temp[2];
+	toRotate[3] = temp[3];
+}
+static inline void rotate_vec4_y(vec4 toRotate, float angle){
+	vec4 temp;
+	// rotate it around the origin
+	mat4x4 rotation_matrix;
+	create_Y_rot_mat4x4(rotation_matrix, -angle);
+	mat4x4_mul_vec4(temp, rotation_matrix, toRotate);
+
+	toRotate[0] = temp[0];
+	toRotate[1] = temp[1];
+	toRotate[2] = temp[2];
+	toRotate[3] = temp[3];
+}
+static inline void rotate_vec4_z(vec4 toRotate, float angle){
+	vec4 temp;
+	// rotate it around the origin
+	mat4x4 rotation_matrix;
+	create_Z_rot_mat4x4(rotation_matrix, -angle);
+	mat4x4_mul_vec4(temp, rotation_matrix, toRotate);
+
+	toRotate[0] = temp[0];
+	toRotate[1] = temp[1];
+	toRotate[2] = temp[2];
+	toRotate[3] = temp[3];
+}
+
 #endif
