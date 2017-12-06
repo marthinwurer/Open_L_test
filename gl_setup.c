@@ -6,6 +6,9 @@
  */
 
 #include "gl_setup.h"
+#include "my_cl_helper.h"
+#include <stdlib.h>
+#include <stdio.h>
 
 GLuint compile_shader(const char * filename, GLuint shader_type){
     GLint success;

@@ -38,6 +38,8 @@
 .project
 *.settings
 *.swp
+.idea/
+cmake-build-debug/
 
 # executables
 cl-demo

@@ -27,7 +27,7 @@ typedef struct shader_data_s{
 typedef struct gl_global_data_s{
 	GLFWwindow* gl_window;
 
-};
+} gl_global_data;
 
 GLuint compile_shader(const char * filename, GLuint shader_type);
 
